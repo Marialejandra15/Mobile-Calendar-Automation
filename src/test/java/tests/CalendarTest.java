@@ -1,8 +1,9 @@
-
 package tests;
 
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.android.nativekey.AndroidKey;
+import io.appium.java_client.android.nativekey.KeyEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,9 +20,17 @@ import java.time.Duration;
 public class CalendarTest {
 
     private AndroidDriver driver;
+    private long tiempoInicio;
 
     @BeforeEach
     public void setUp() throws Exception {
+
+        tiempoInicio = System.currentTimeMillis();
+
+        System.out.println("\n========================================");
+        System.out.println("       AUTOMATIZACION MOBILE QA");
+        System.out.println("========================================");
+        System.out.println("[INICIO] Configurando Google Calendar...");
 
         DesiredCapabilities capabilities = new DesiredCapabilities();
 
@@ -41,13 +50,14 @@ public class CalendarTest {
                 "com.android.calendar.AllInOneActivity"
         );
 
-        // Abrir Google Calendar
         driver = new AndroidDriver(
                 new URL("http://127.0.0.1:4723/"),
                 capabilities
         );
 
         driver.manage().timeouts().implicitlyWait(Duration.ZERO);
+
+        imprimirPaso("Aplicacion iniciada correctamente");
     }
 
     @Test
@@ -57,103 +67,203 @@ public class CalendarTest {
                 driver, Duration.ofSeconds(10)
         );
 
-        // 1. Avanzar por las pantallas de bienvenida
-        By siguientePagina = By.xpath(
-                "//android.widget.ImageView[@content-desc='next page']"
-        );
-
-        By siguientePaginaContenedor = By.id(
-                "com.google.android.calendar:id/next_arrow_touch"
-        );
-
-        By botonListo = By.id(
-                "com.google.android.calendar:id/done_button"
-        );
-
-        for (int i = 0; i < 5; i++) {
-
-            try {
-                WebElement flecha = new WebDriverWait(
-                        driver, Duration.ofSeconds(2)
-                ).until(d -> {
-
-                    var elementos = d.findElements(siguientePagina);
-
-                    if (!elementos.isEmpty()
-                            && elementos.get(0).isDisplayed()) {
-                        return elementos.get(0);
-                    }
-
-                    elementos = d.findElements(
-                            siguientePaginaContenedor
-                    );
-
-                    if (!elementos.isEmpty()
-                            && elementos.get(0).isDisplayed()) {
-                        return elementos.get(0);
-                    }
-
-                    return null;
-                });
-
-                flecha.click();
-
-            } catch (TimeoutException e) {
-                break;
-            }
-        }
-
-        // 2. Pulsar Done si aparece
         try {
-            WebElement listo = new WebDriverWait(
-                    driver, Duration.ofSeconds(2)
-            ).until(
-                    ExpectedConditions.elementToBeClickable(botonListo)
+
+            System.out.println("\n--- CREACION DE EVENTO ---");
+
+            // 1. Avanzar por las pantallas de bienvenida
+            By siguientePagina = By.xpath(
+                    "//android.widget.ImageView[@content-desc='next page']"
             );
 
-            listo.click();
+            By siguientePaginaContenedor = By.id(
+                    "com.google.android.calendar:id/next_arrow_touch"
+            );
 
-        } catch (TimeoutException e) {
-            System.out.println("No apareció Done; continuando.");
+            By botonListo = By.id(
+                    "com.google.android.calendar:id/done_button"
+            );
+
+            for (int i = 0; i < 5; i++) {
+                try {
+                    WebElement flecha = new WebDriverWait(
+                            driver, Duration.ofSeconds(2)
+                    ).until(d -> {
+
+                        var elementos = d.findElements(siguientePagina);
+
+                        if (!elementos.isEmpty()
+                                && elementos.get(0).isDisplayed()) {
+                            return elementos.get(0);
+                        }
+
+                        elementos = d.findElements(
+                                siguientePaginaContenedor
+                        );
+
+                        if (!elementos.isEmpty()
+                                && elementos.get(0).isDisplayed()) {
+                            return elementos.get(0);
+                        }
+
+                        return null;
+                    });
+
+                    flecha.click();
+
+                } catch (TimeoutException e) {
+                    break;
+                }
+            }
+
+            try {
+                WebElement listo = new WebDriverWait(
+                        driver, Duration.ofSeconds(2)
+                ).until(
+                        ExpectedConditions.elementToBeClickable(botonListo)
+                );
+
+                listo.click();
+
+            } catch (TimeoutException e) {
+                System.out.println(
+                        "[INFO] No aparecio la pantalla de bienvenida."
+                );
+            }
+
+            // 2. Pulsar el boton +
+            espera.until(
+                    ExpectedConditions.elementToBeClickable(
+                            AppiumBy.accessibilityId(
+                                    "Create new event and more"
+                            )
+                    )
+            ).click();
+
+            imprimirPaso("Menu de creacion abierto");
+
+            // 3. Seleccionar Evento
+            espera.until(
+                    ExpectedConditions.elementToBeClickable(
+                            AppiumBy.accessibilityId("Event button")
+                    )
+            ).click();
+
+            imprimirPaso("Formulario de evento abierto");
+
+            // 4. Escribir el titulo
+            String tituloEvento = "Prueba de automatizacion QA";
+
+            WebElement campoTitulo = espera.until(
+                    ExpectedConditions.visibilityOfElementLocated(
+                            By.id("com.google.android.calendar:id/title")
+                    )
+            );
+
+            campoTitulo.sendKeys(tituloEvento);
+
+            imprimirPaso("Titulo ingresado: " + tituloEvento);
+
+            // 5. Ocultar teclado
+            driver.pressKey(new KeyEvent(AndroidKey.BACK));
+
+            imprimirPaso("Teclado ocultado");
+
+            // 6. Activar All-day
+            By switchAllDay = By.xpath("//android.widget.Switch");
+
+            WebElement allDay = espera.until(
+                    ExpectedConditions.elementToBeClickable(switchAllDay)
+            );
+
+            if (!allDay.isSelected()) {
+                allDay.click();
+            }
+
+            imprimirPaso("Opcion All-day activada");
+
+            // 7. Desplazarse hacia abajo
+            driver.findElement(
+                    AppiumBy.androidUIAutomator(
+                            "new UiScrollable(new UiSelector().scrollable(true))"
+                                    + ".scrollForward()"
+                    )
+            );
+
+            imprimirPaso("Formulario desplazado hacia abajo");
+
+            // 8. Añadir descripcion
+            By campoDescripcion = By.xpath(
+                    "//android.widget.EditText[@text='Add description']"
+            );
+
+            WebElement descripcion = espera.until(
+                    ExpectedConditions.visibilityOfElementLocated(
+                            campoDescripcion
+                    )
+            );
+
+            String textoDescripcion =
+                    "Evento creado mediante una prueba automatizada de QA.";
+
+            descripcion.click();
+            descripcion.sendKeys(textoDescripcion);
+
+            imprimirPaso("Descripcion ingresada");
+
+            // 9. Ocultar teclado
+            driver.pressKey(new KeyEvent(AndroidKey.BACK));
+
+            imprimirPaso("Teclado ocultado nuevamente");
+
+            // 10. Guardar evento
+            By botonGuardar = By.xpath(
+                    "//android.widget.Button"
+                            + "[@resource-id='com.google.android.calendar:id/save']"
+            );
+
+            espera.until(
+                    ExpectedConditions.elementToBeClickable(botonGuardar)
+            ).click();
+
+            imprimirPaso("Boton Guardar pulsado");
+
+            // 11. Comprobar que aparece la pantalla posterior al guardado
+            By pantallaCalendario = By.xpath(
+                    "//android.support.v7.widget.RecyclerView/android.view.View[3]"
+            );
+
+            espera.until(
+                    ExpectedConditions.visibilityOfElementLocated(
+                            pantallaCalendario
+                    )
+            );
+
+            imprimirPaso(
+                    "Elemento esperado visible despues de guardar"
+            );
+
+            long duracion = (System.currentTimeMillis()
+                    - tiempoInicio) / 1000;
+
+            System.out.println("\n========================================");
+            System.out.println("       RESULTADO: PRUEBA FINALIZADA");
+            System.out.println("       DURACION: " + duracion + " segundos");
+            System.out.println("========================================\n");
+
+        } catch (Exception e) {
+
+            System.out.println("\n========================================");
+            System.out.println("       RESULTADO: PRUEBA FALLIDA");
+            System.out.println("       ERROR: " + e.getMessage());
+            System.out.println("========================================\n");
+
+            throw e;
         }
+    }
 
-        // 3. Pulsar el botón +
-        espera.until(
-                ExpectedConditions.elementToBeClickable(
-                        AppiumBy.accessibilityId(
-                                "Create new event and more"
-                        )
-                )
-        ).click();
-
-        // 4. Seleccionar Evento
-        espera.until(
-                ExpectedConditions.elementToBeClickable(
-                        AppiumBy.accessibilityId("Event button")
-                )
-        ).click();
-
-        // 5. Escribir el título
-        String tituloEvento = "Prueba de automatizacion QA";
-
-        WebElement campoTitulo = espera.until(
-                ExpectedConditions.visibilityOfElementLocated(
-                        By.id("com.google.android.calendar:id/title")
-                )
-        );
-
-        campoTitulo.sendKeys(tituloEvento);
-
-        // 6. Guardar el evento
-        espera.until(
-                ExpectedConditions.elementToBeClickable(
-                        By.id("com.google.android.calendar:id/save")
-                )
-        ).click();
-
-        System.out.println(
-                "Se completaron los pasos hasta pulsar Guardar."
-        );
+    private void imprimirPaso(String mensaje) {
+        System.out.println("[OK] " + mensaje);
     }
 
     @AfterEach
@@ -161,6 +271,7 @@ public class CalendarTest {
 
         if (driver != null) {
             driver.quit();
+            System.out.println("[INFO] Sesion de Appium cerrada");
         }
     }
 }
